@@ -31,6 +31,10 @@ struct Args {
     /// The jwt secret to use
     #[arg(short, long)]
     jwt_secret: Option<String>,
+
+    /// Output the raw payload, instead of including the command text
+    #[arg(short, long)]
+    raw: bool,
 }
 
 fn main() {
@@ -104,6 +108,21 @@ fn main() {
     // let json_versioned_hashes = serde_json::to_string(&blob_versioned_hashes.into_iter().map(|versioned_hash| format!("{versioned_hash}")).collect::<Vec<String>>()).unwrap();
     let json_versioned_hashes = serde_json::to_string(&blob_versioned_hashes).unwrap();
     let json_parent_beacon_block_root = serde_json::to_string(&parent_beacon_block_root).unwrap();
+
+    // if raw is set, print the raw payload, without quotes
+    if args.raw {
+        // craft the request to pass into `cast rpc --raw`, as stdin
+        let json_request = "[".to_string()
+            + &[
+                json_payload,
+                json_versioned_hashes,
+                json_parent_beacon_block_root,
+            ]
+            .join(",")
+            + "]";
+        println!("{}", json_request);
+        return;
+    }
 
     // craft the request to pass into `cast rpc --raw`
     let json_request = "'[".to_string()
