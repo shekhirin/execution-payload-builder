@@ -38,7 +38,7 @@ struct Args {
     /// can be very powerful, for example:
     ///
     /// ```sh
-    /// cast block latest -r http://45.250.253.66:8544 --full -j | ./target/debug/execution-payload-builder --raw | cast rpc --jwt-secret <JWT_SECRET> engine_newPayloadV3 --raw
+    /// cast block latest -r http://45.250.253.66:8544 --full -j | execution-payload-builder --raw | cast rpc --jwt-secret <JWT_SECRET> engine_newPayloadV3 --raw
     /// ```
     #[arg(long)]
     raw: bool,
