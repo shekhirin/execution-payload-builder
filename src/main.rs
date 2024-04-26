@@ -1,3 +1,5 @@
+use std::io::Read;
+
 use clap::Parser;
 use reth::{
     primitives::Withdrawals,
@@ -20,9 +22,9 @@ use reth::{
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Path to the json file to parse
+    /// Path to the json file to parse. If this is not specified, then stdin will be used.
     #[arg(short, long)]
-    path: String,
+    path: Option<String>,
 
     /// The engine rpc url to use
     #[arg(short, long)]
@@ -32,17 +34,30 @@ struct Args {
     #[arg(short, long)]
     jwt_secret: Option<String>,
 
-    /// Output the raw payload, instead of including the command text
-    #[arg(short, long)]
+    /// Output the raw payload, instead of including the command text. When used with stdin this
+    /// can be very powerful, for example:
+    ///
+    /// ```sh
+    /// cast block latest -r http://45.250.253.66:8544 --full -j | ./target/debug/execution-payload-builder --raw | cast rpc --jwt-secret <JWT_SECRET> engine_newPayloadV3 --raw
+    /// ```
+    #[arg(long)]
     raw: bool,
 }
 
 fn main() {
     let args = Args::parse();
 
+    // read the file specified in `--path` otherwise read from stdin
+    let block_json = if let Some(path) = &args.path {
+        std::fs::read_to_string(path).unwrap()
+    } else {
+        let mut buffer = String::new();
+        std::io::stdin().read_to_string(&mut buffer).unwrap();
+        buffer
+    };
+
     // parse the file
-    let file = std::fs::read_to_string(args.path).unwrap();
-    let block: Block = serde_json::from_str(&file).unwrap();
+    let block: Block = serde_json::from_str(&block_json).unwrap();
 
     // extract the parent beacon block root
     let parent_beacon_block_root = block.header.parent_beacon_block_root;
