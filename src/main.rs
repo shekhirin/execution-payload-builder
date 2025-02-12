@@ -3,6 +3,7 @@ use std::{io::Read, str::FromStr};
 use clap::Parser;
 use reth::{
     primitives::{
+        hex::FromHex,
         transaction::{TxEip1559, TxEip2930, TxEip4844, TxLegacy},
         AccessList, AccessListItem, Header as PrimitiveHeader, SealedBlock, Signature,
         Transaction as PrimitiveTransaction, TransactionKind, TransactionSigned,
@@ -298,7 +299,7 @@ fn rpc_transaction_to_primitive_transaction(transaction: Transaction) -> Transac
         })
     } else if transaction.transaction_type == Some(126) {
         PrimitiveTransaction::Deposit(TxDeposit {
-            source_hash: B256::from_str(&transaction.other.get("sourceHash").unwrap().to_string())
+            source_hash: B256::from_hex(transaction.other.get("sourceHash").unwrap().to_string())
                 .unwrap(),
             from: transaction.from,
             to,
