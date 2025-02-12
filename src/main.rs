@@ -213,7 +213,7 @@ fn rpc_transaction_to_primitive_transaction(transaction: Transaction) -> Transac
         None => TransactionKind::Create,
     };
     let value = transaction.value;
-    let chain_id = transaction.chain_id.unwrap();
+    let chain_id = transaction.chain_id;
     let input = transaction.input;
     let access_list = AccessList(
         transaction
@@ -261,7 +261,7 @@ fn rpc_transaction_to_primitive_transaction(transaction: Transaction) -> Transac
     // just condition on tx type
     let tx = if transaction.transaction_type == Some(3) {
         PrimitiveTransaction::Eip4844(TxEip4844 {
-            chain_id,
+            chain_id: chain_id.unwrap(),
             nonce,
             gas_limit: gas_limit.try_into().unwrap(),
             max_fee_per_gas: transaction.max_fee_per_gas.unwrap(),
@@ -275,7 +275,7 @@ fn rpc_transaction_to_primitive_transaction(transaction: Transaction) -> Transac
         })
     } else if transaction.transaction_type == Some(2) {
         PrimitiveTransaction::Eip1559(TxEip1559 {
-            chain_id,
+            chain_id: chain_id.unwrap(),
             nonce,
             gas_limit: gas_limit.try_into().unwrap(),
             max_fee_per_gas: transaction.max_fee_per_gas.unwrap(),
@@ -287,7 +287,7 @@ fn rpc_transaction_to_primitive_transaction(transaction: Transaction) -> Transac
         })
     } else if transaction.transaction_type == Some(1) {
         PrimitiveTransaction::Eip2930(TxEip2930 {
-            chain_id,
+            chain_id: chain_id.unwrap(),
             nonce,
             gas_price: transaction.gas_price.unwrap(),
             gas_limit: gas_limit.try_into().unwrap(),
@@ -319,7 +319,7 @@ fn rpc_transaction_to_primitive_transaction(transaction: Transaction) -> Transac
     } else {
         // otherwise legacy
         PrimitiveTransaction::Legacy(TxLegacy {
-            chain_id: Some(chain_id),
+            chain_id,
             nonce,
             gas_price: transaction.gas_price.unwrap(),
             gas_limit: gas_limit.try_into().unwrap(),
