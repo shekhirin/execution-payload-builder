@@ -1,21 +1,21 @@
-use std::io::Read;
+use std::{io::Read, str::FromStr};
 
 use clap::Parser;
-use reth::{
-    primitives::Withdrawals,
-    rpc::{
-        compat::engine::payload::try_block_to_payload,
-        types::{Block, BlockTransactions, ExecutionPayload, Header, Transaction, Withdrawal},
-    },
-};
 use reth::{
     primitives::{
         transaction::{TxEip1559, TxEip2930, TxEip4844, TxLegacy},
         AccessList, AccessListItem, Header as PrimitiveHeader, SealedBlock, Signature,
         Transaction as PrimitiveTransaction, TransactionKind, TransactionSigned,
-        Withdrawal as PrimitiveWithdrawal,
+        Withdrawal as PrimitiveWithdrawal, B256,
     },
     rpc::types::Parity,
+};
+use reth::{
+    primitives::{TxDeposit, Withdrawals},
+    rpc::{
+        compat::engine::payload::try_block_to_payload,
+        types::{Block, BlockTransactions, ExecutionPayload, Header, Transaction, Withdrawal},
+    },
 };
 
 /// Parses the given json file, creating an execution payload from it.
@@ -294,6 +294,26 @@ fn rpc_transaction_to_primitive_transaction(transaction: Transaction) -> Transac
             to,
             value,
             access_list,
+            input,
+        })
+    } else if transaction.transaction_type == Some(126) {
+        PrimitiveTransaction::Deposit(TxDeposit {
+            source_hash: B256::from_str(&transaction.other.get("sourceHash").unwrap().to_string())
+                .unwrap(),
+            from: transaction.from,
+            to,
+            mint: transaction
+                .other
+                .get("mint")
+                .map(|v| u128::from_str(&v.to_string()).unwrap()),
+            value,
+            gas_limit: gas_limit.try_into().unwrap(),
+            is_system_transaction: transaction
+                .other
+                .get("isSystemTransaction")
+                .unwrap()
+                .as_bool()
+                .unwrap(),
             input,
         })
     } else {
