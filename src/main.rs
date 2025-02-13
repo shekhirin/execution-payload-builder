@@ -6,13 +6,14 @@ use alloy::{
         Transaction as PrimitiveTransaction, TxEnvelope as EthTxEnvelope,
     },
     eips::{eip2930::AccessList, eip7702::SignedAuthorization, Encodable2718, Typed2718},
-    primitives::{Bytes, ChainId, TxKind, B256, U256},
+    primitives::{bytes::BufMut, Bytes, ChainId, TxKind, B256, U256},
     rpc::types::{
         engine::ExecutionPayload, Block as RpcBlock, BlockTransactions,
         Transaction as EthRpcTransaction,
     },
 };
 use clap::Parser;
+use delegate::delegate;
 use op_alloy::rpc_types::Transaction as OpRpcTransaction;
 use serde::{Deserialize, Serialize};
 
@@ -50,147 +51,51 @@ enum RpcTransaction {
 }
 
 impl Typed2718 for RpcTransaction {
-    fn ty(&self) -> u8 {
-        match self {
-            RpcTransaction::Ethereum(tx) => tx.ty(),
-            RpcTransaction::Optimism(tx) => tx.ty(),
+    delegate! {
+        to match self {
+            RpcTransaction::Ethereum(tx) => tx,
+            RpcTransaction::Optimism(tx) => tx,
+        } {
+            fn ty(&self) -> u8;
         }
     }
 }
 
 impl PrimitiveTransaction for RpcTransaction {
-    fn chain_id(&self) -> Option<ChainId> {
-        match self {
-            RpcTransaction::Ethereum(tx) => tx.chain_id(),
-            RpcTransaction::Optimism(tx) => tx.chain_id(),
-        }
-    }
-
-    fn nonce(&self) -> u64 {
-        match self {
-            RpcTransaction::Ethereum(tx) => tx.nonce(),
-            RpcTransaction::Optimism(tx) => tx.nonce(),
-        }
-    }
-
-    fn gas_limit(&self) -> u64 {
-        match self {
-            RpcTransaction::Ethereum(tx) => tx.gas_limit(),
-            RpcTransaction::Optimism(tx) => tx.gas_limit(),
-        }
-    }
-
-    fn gas_price(&self) -> Option<u128> {
-        match self {
-            RpcTransaction::Ethereum(tx) => tx.gas_price(),
-            RpcTransaction::Optimism(tx) => tx.gas_price(),
-        }
-    }
-
-    fn max_fee_per_gas(&self) -> u128 {
-        match self {
-            RpcTransaction::Ethereum(tx) => tx.max_fee_per_gas(),
-            RpcTransaction::Optimism(tx) => tx.max_fee_per_gas(),
-        }
-    }
-
-    fn max_priority_fee_per_gas(&self) -> Option<u128> {
-        match self {
-            RpcTransaction::Ethereum(tx) => tx.max_priority_fee_per_gas(),
-            RpcTransaction::Optimism(tx) => tx.max_priority_fee_per_gas(),
-        }
-    }
-
-    fn max_fee_per_blob_gas(&self) -> Option<u128> {
-        match self {
-            RpcTransaction::Ethereum(tx) => tx.max_fee_per_blob_gas(),
-            RpcTransaction::Optimism(tx) => tx.max_fee_per_blob_gas(),
-        }
-    }
-
-    fn priority_fee_or_price(&self) -> u128 {
-        match self {
-            RpcTransaction::Ethereum(tx) => tx.priority_fee_or_price(),
-            RpcTransaction::Optimism(tx) => tx.priority_fee_or_price(),
-        }
-    }
-
-    fn effective_gas_price(&self, base_fee: Option<u64>) -> u128 {
-        match self {
-            RpcTransaction::Ethereum(tx) => tx.effective_gas_price(base_fee),
-            RpcTransaction::Optimism(tx) => tx.effective_gas_price(base_fee),
-        }
-    }
-
-    fn is_dynamic_fee(&self) -> bool {
-        match self {
-            RpcTransaction::Ethereum(tx) => tx.is_dynamic_fee(),
-            RpcTransaction::Optimism(tx) => tx.is_dynamic_fee(),
-        }
-    }
-
-    fn kind(&self) -> TxKind {
-        match self {
-            RpcTransaction::Ethereum(tx) => tx.kind(),
-            RpcTransaction::Optimism(tx) => tx.kind(),
-        }
-    }
-
-    fn is_create(&self) -> bool {
-        match self {
-            RpcTransaction::Ethereum(tx) => tx.is_create(),
-            RpcTransaction::Optimism(tx) => tx.is_create(),
-        }
-    }
-
-    fn value(&self) -> U256 {
-        match self {
-            RpcTransaction::Ethereum(tx) => tx.value(),
-            RpcTransaction::Optimism(tx) => tx.value(),
-        }
-    }
-
-    fn input(&self) -> &Bytes {
-        match self {
-            RpcTransaction::Ethereum(tx) => tx.input(),
-            RpcTransaction::Optimism(tx) => tx.input(),
-        }
-    }
-
-    fn access_list(&self) -> Option<&AccessList> {
-        match self {
-            RpcTransaction::Ethereum(tx) => tx.access_list(),
-            RpcTransaction::Optimism(tx) => tx.access_list(),
-        }
-    }
-
-    fn blob_versioned_hashes(&self) -> Option<&[B256]> {
-        match self {
-            RpcTransaction::Ethereum(tx) => tx.blob_versioned_hashes(),
-            RpcTransaction::Optimism(tx) => tx.blob_versioned_hashes(),
-        }
-    }
-
-    fn authorization_list(&self) -> Option<&[SignedAuthorization]> {
-        match self {
-            RpcTransaction::Ethereum(tx) => tx.authorization_list(),
-            RpcTransaction::Optimism(tx) => tx.authorization_list(),
+    delegate! {
+        to match self {
+            RpcTransaction::Ethereum(tx) => tx,
+            RpcTransaction::Optimism(tx) => tx,
+        } {
+            fn chain_id(&self) -> Option<ChainId>;
+            fn nonce(&self) -> u64;
+            fn gas_limit(&self) -> u64;
+            fn gas_price(&self) -> Option<u128>;
+            fn max_fee_per_gas(&self) -> u128;
+            fn max_priority_fee_per_gas(&self) -> Option<u128>;
+            fn max_fee_per_blob_gas(&self) -> Option<u128>;
+            fn priority_fee_or_price(&self) -> u128;
+            fn effective_gas_price(&self, base_fee: Option<u64>) -> u128;
+            fn is_dynamic_fee(&self) -> bool;
+            fn kind(&self) -> TxKind;
+            fn is_create(&self) -> bool;
+            fn value(&self) -> U256;
+            fn input(&self) -> &Bytes;
+            fn access_list(&self) -> Option<&AccessList>;
+            fn blob_versioned_hashes(&self) -> Option<&[B256]>;
+            fn authorization_list(&self) -> Option<&[SignedAuthorization]>;
         }
     }
 }
 
 impl Encodable2718 for RpcTransaction {
-    fn encode_2718_len(&self) -> usize {
-        match self {
-            RpcTransaction::Ethereum(tx) => tx.inner.encode_2718_len(),
-            RpcTransaction::Optimism(tx) => tx.inner.inner.encode_2718_len(),
-        }
-    }
-
-    fn encode_2718(&self, out: &mut dyn alloy::primitives::bytes::BufMut) {
-        match self {
-            RpcTransaction::Ethereum(tx) => tx.inner.encode_2718(out),
-            RpcTransaction::Optimism(tx) => tx.inner.inner.encode_2718(out),
+    delegate! {
+        to match self {
+            RpcTransaction::Ethereum(tx) => tx.inner,
+            RpcTransaction::Optimism(tx) => tx.inner.inner,
+        } {
+            fn encode_2718_len(&self) -> usize;
+            fn encode_2718(&self, out: &mut dyn BufMut);
         }
     }
 }
