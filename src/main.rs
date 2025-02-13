@@ -173,15 +173,15 @@ fn main() {
     let suffix = format!("engine_newPayloadV3 --raw {json_request}");
 
     if let Some(rpc_url) = args.rpc_url {
-        prefix += &format!(" --rpc-url {}", rpc_url);
+        prefix += &format!(" --rpc-url {rpc_url}");
     }
 
     if let Some(secret) = args.jwt_secret {
-        prefix += &format!(" --jwt-secret {}", secret);
+        prefix += &format!(" --jwt-secret {secret}");
     }
 
     // add the suffix and request
-    prefix += &format!(" {}", suffix);
+    prefix += &format!(" {suffix}");
 
     // print the payload
     println!("{prefix}");
