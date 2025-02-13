@@ -246,7 +246,8 @@ fn main() {
             ommers: vec![],
             withdrawals: block.withdrawals,
         },
-    ));
+    ))
+    .0;
 
     // create separate JSON strings and combine them manually
     let json_payload = serde_json::to_string(&execution_payload).unwrap();
