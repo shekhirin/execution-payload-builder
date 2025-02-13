@@ -146,11 +146,7 @@ fn main() {
     // convert to execution payload
     let execution_payload = ExecutionPayload::from_block_slow(&PrimitiveBlock::new(
         PrimitiveHeader::from(block.header),
-        BlockBody {
-            transactions,
-            ommers: vec![],
-            withdrawals: block.withdrawals,
-        },
+        BlockBody { transactions, ommers: vec![], withdrawals: block.withdrawals },
     ))
     .0;
 
