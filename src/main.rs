@@ -249,16 +249,13 @@ fn main() {
     ))
     .0;
 
-    // create separate JSON strings and combine them manually
-    let json_payload = serde_json::to_string(&execution_payload).unwrap();
-    let json_versioned_hashes = serde_json::to_string(&blob_versioned_hashes).unwrap();
-    let json_parent_beacon_block_root = serde_json::to_string(&parent_beacon_block_root).unwrap();
-
-    // combine the JSON strings into a single request array
-    let json_request = format!(
-        "[{},{},{}]",
-        json_payload, json_versioned_hashes, json_parent_beacon_block_root
-    );
+    // create a JSON string for the request
+    let json_request = serde_json::to_string(&(
+        execution_payload,
+        blob_versioned_hashes,
+        parent_beacon_block_root,
+    ))
+    .unwrap();
 
     // if raw is set, print the raw payload, without quotes
     if args.raw {
