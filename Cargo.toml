@@ -6,14 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# alloy
+clap = { version = "4.4.7", features = ["derive"] }
 alloy = { version = "0.11.1", features = ["rpc-types-engine"] }
 op-alloy = { version = "0.10.3", features = ["consensus", "rpc-types"] }
-
-# serde
 serde = "1"
 serde_json = "1"
-
-# cli
-clap = { version = "4.4.7", features = ["derive"] }
-eyre = "0.6"
