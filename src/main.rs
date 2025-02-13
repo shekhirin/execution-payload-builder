@@ -1,23 +1,20 @@
-use std::{io::Read, str::FromStr};
+use std::io::Read;
 
+use alloy::{
+    consensus::{
+        Block as PrimitiveBlock, BlockBody, Header as PrimitiveHeader,
+        Transaction as PrimitiveTransaction, TxEnvelope as EthTxEnvelope,
+    },
+    eips::{eip2930::AccessList, eip7702::SignedAuthorization, Encodable2718, Typed2718},
+    primitives::{Bytes, ChainId, TxKind, B256, U256},
+    rpc::types::{
+        engine::ExecutionPayload, Block as RpcBlock, BlockTransactions,
+        Transaction as EthRpcTransaction,
+    },
+};
 use clap::Parser;
-use reth::{
-    primitives::{
-        hex::FromHex,
-        transaction::{TxEip1559, TxEip2930, TxEip4844, TxLegacy},
-        AccessList, AccessListItem, Header as PrimitiveHeader, SealedBlock, Signature,
-        Transaction as PrimitiveTransaction, TransactionKind, TransactionSigned,
-        Withdrawal as PrimitiveWithdrawal, B256,
-    },
-    rpc::types::Parity,
-};
-use reth::{
-    primitives::{TxDeposit, Withdrawals},
-    rpc::{
-        compat::engine::payload::try_block_to_payload,
-        types::{Block, BlockTransactions, ExecutionPayload, Header, Transaction, Withdrawal},
-    },
-};
+use op_alloy::rpc_types::Transaction as OpRpcTransaction;
+use serde::{Deserialize, Serialize};
 
 /// Parses the given json file, creating an execution payload from it.
 #[derive(Parser, Debug)]
@@ -45,6 +42,159 @@ struct Args {
     raw: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+enum RpcTransaction {
+    Ethereum(EthRpcTransaction),
+    Optimism(OpRpcTransaction),
+}
+
+impl Typed2718 for RpcTransaction {
+    fn ty(&self) -> u8 {
+        match self {
+            RpcTransaction::Ethereum(tx) => tx.ty(),
+            RpcTransaction::Optimism(tx) => tx.ty(),
+        }
+    }
+}
+
+impl PrimitiveTransaction for RpcTransaction {
+    fn chain_id(&self) -> Option<ChainId> {
+        match self {
+            RpcTransaction::Ethereum(tx) => tx.chain_id(),
+            RpcTransaction::Optimism(tx) => tx.chain_id(),
+        }
+    }
+
+    fn nonce(&self) -> u64 {
+        match self {
+            RpcTransaction::Ethereum(tx) => tx.nonce(),
+            RpcTransaction::Optimism(tx) => tx.nonce(),
+        }
+    }
+
+    fn gas_limit(&self) -> u64 {
+        match self {
+            RpcTransaction::Ethereum(tx) => tx.gas_limit(),
+            RpcTransaction::Optimism(tx) => tx.gas_limit(),
+        }
+    }
+
+    fn gas_price(&self) -> Option<u128> {
+        match self {
+            RpcTransaction::Ethereum(tx) => tx.gas_price(),
+            RpcTransaction::Optimism(tx) => tx.gas_price(),
+        }
+    }
+
+    fn max_fee_per_gas(&self) -> u128 {
+        match self {
+            RpcTransaction::Ethereum(tx) => tx.max_fee_per_gas(),
+            RpcTransaction::Optimism(tx) => tx.max_fee_per_gas(),
+        }
+    }
+
+    fn max_priority_fee_per_gas(&self) -> Option<u128> {
+        match self {
+            RpcTransaction::Ethereum(tx) => tx.max_priority_fee_per_gas(),
+            RpcTransaction::Optimism(tx) => tx.max_priority_fee_per_gas(),
+        }
+    }
+
+    fn max_fee_per_blob_gas(&self) -> Option<u128> {
+        match self {
+            RpcTransaction::Ethereum(tx) => tx.max_fee_per_blob_gas(),
+            RpcTransaction::Optimism(tx) => tx.max_fee_per_blob_gas(),
+        }
+    }
+
+    fn priority_fee_or_price(&self) -> u128 {
+        match self {
+            RpcTransaction::Ethereum(tx) => tx.priority_fee_or_price(),
+            RpcTransaction::Optimism(tx) => tx.priority_fee_or_price(),
+        }
+    }
+
+    fn effective_gas_price(&self, base_fee: Option<u64>) -> u128 {
+        match self {
+            RpcTransaction::Ethereum(tx) => tx.effective_gas_price(base_fee),
+            RpcTransaction::Optimism(tx) => tx.effective_gas_price(base_fee),
+        }
+    }
+
+    fn is_dynamic_fee(&self) -> bool {
+        match self {
+            RpcTransaction::Ethereum(tx) => tx.is_dynamic_fee(),
+            RpcTransaction::Optimism(tx) => tx.is_dynamic_fee(),
+        }
+    }
+
+    fn kind(&self) -> TxKind {
+        match self {
+            RpcTransaction::Ethereum(tx) => tx.kind(),
+            RpcTransaction::Optimism(tx) => tx.kind(),
+        }
+    }
+
+    fn is_create(&self) -> bool {
+        match self {
+            RpcTransaction::Ethereum(tx) => tx.is_create(),
+            RpcTransaction::Optimism(tx) => tx.is_create(),
+        }
+    }
+
+    fn value(&self) -> U256 {
+        match self {
+            RpcTransaction::Ethereum(tx) => tx.value(),
+            RpcTransaction::Optimism(tx) => tx.value(),
+        }
+    }
+
+    fn input(&self) -> &Bytes {
+        match self {
+            RpcTransaction::Ethereum(tx) => tx.input(),
+            RpcTransaction::Optimism(tx) => tx.input(),
+        }
+    }
+
+    fn access_list(&self) -> Option<&AccessList> {
+        match self {
+            RpcTransaction::Ethereum(tx) => tx.access_list(),
+            RpcTransaction::Optimism(tx) => tx.access_list(),
+        }
+    }
+
+    fn blob_versioned_hashes(&self) -> Option<&[B256]> {
+        match self {
+            RpcTransaction::Ethereum(tx) => tx.blob_versioned_hashes(),
+            RpcTransaction::Optimism(tx) => tx.blob_versioned_hashes(),
+        }
+    }
+
+    fn authorization_list(&self) -> Option<&[SignedAuthorization]> {
+        match self {
+            RpcTransaction::Ethereum(tx) => tx.authorization_list(),
+            RpcTransaction::Optimism(tx) => tx.authorization_list(),
+        }
+    }
+}
+
+impl Encodable2718 for RpcTransaction {
+    fn encode_2718_len(&self) -> usize {
+        match self {
+            RpcTransaction::Ethereum(tx) => tx.inner.encode_2718_len(),
+            RpcTransaction::Optimism(tx) => tx.inner.inner.encode_2718_len(),
+        }
+    }
+
+    fn encode_2718(&self, out: &mut dyn alloy::primitives::bytes::BufMut) {
+        match self {
+            RpcTransaction::Ethereum(tx) => tx.inner.encode_2718(out),
+            RpcTransaction::Optimism(tx) => tx.inner.inner.encode_2718(out),
+        }
+    }
+}
+
 fn main() {
     let args = Args::parse();
 
@@ -58,14 +208,14 @@ fn main() {
     };
 
     // parse the file
-    let block: Block = serde_json::from_str(&block_json).unwrap();
+    let block: RpcBlock<RpcTransaction> = serde_json::from_str(&block_json).unwrap();
 
     // extract the parent beacon block root
     let parent_beacon_block_root = block.header.parent_beacon_block_root;
 
     // convert transactions into primitive txs
     // TODO: upstream into rpc compat
-    let txs = match block.transactions {
+    let transactions = match block.transactions {
         // this would be an error in upstream
         BlockTransactions::Hashes(_hashes) => {
             panic!("send the eth_getBlockByHash request with full: `true`")
@@ -75,84 +225,49 @@ fn main() {
         BlockTransactions::Uncle => panic!("this should not be run on uncle blocks"),
     };
 
-    // convert transactions into primitive transactions
-    let body: Vec<TransactionSigned> = txs
-        .into_iter()
-        .map(rpc_transaction_to_primitive_transaction)
-        .collect();
-
-    // convert header into a primitive header
-    let header = rpc_header_to_primitive_header(block.header).seal_slow();
-
     // extract blob versioned hashes from txs
-    let mut blob_versioned_hashes = Vec::new();
-    for tx in &body {
-        if let PrimitiveTransaction::Eip4844(tx) = &tx.transaction {
-            blob_versioned_hashes.extend(tx.blob_versioned_hashes.clone());
-        }
-    }
-
-    // convert withdrawals into primitive withdrawals
-    let withdrawals: Option<Vec<PrimitiveWithdrawal>> = block.withdrawals.map(|withdrawals| {
-        withdrawals
-            .into_iter()
-            .map(rpc_withdrawal_to_primitive_withdrawal)
-            .collect()
-    });
-
-    // convert into an execution payload
-    // TODO: upstream into rpc compat
-    let sealed = SealedBlock {
-        header,
-        ommers: Vec::new(),
-        body,
-        withdrawals: withdrawals.map(Withdrawals::new),
-    };
+    let blob_versioned_hashes = transactions
+        .iter()
+        .filter_map(|tx| {
+            if let RpcTransaction::Ethereum(tx) = tx {
+                if let EthTxEnvelope::Eip4844(tx) = &tx.inner {
+                    return tx.tx().blob_versioned_hashes().map(|v| v.to_vec());
+                }
+            }
+            None
+        })
+        .collect::<Vec<_>>();
 
     // convert to execution payload
-    let execution_payload = try_block_to_payload(sealed);
+    let execution_payload = ExecutionPayload::from_block_slow(&PrimitiveBlock::new(
+        PrimitiveHeader::from(block.header),
+        BlockBody {
+            transactions,
+            ommers: vec![],
+            withdrawals: block.withdrawals,
+        },
+    ));
 
-    // convert into something that can be sent to the engine, ie `cast rpc` or something
-    // this needs to be combined with the parent beacon block root, and blob versioned hashes
-    let json_payload = match execution_payload {
-        ExecutionPayload::V1(payload) => serde_json::to_string(&payload).unwrap(),
-        ExecutionPayload::V2(payload) => serde_json::to_string(&payload).unwrap(),
-        ExecutionPayload::V3(payload) => serde_json::to_string(&payload).unwrap(),
-    };
-
-    // print blob versioned hashes and parent beacon block root
-    // let json_versioned_hashes = serde_json::to_string(&blob_versioned_hashes.into_iter().map(|versioned_hash| format!("{versioned_hash}")).collect::<Vec<String>>()).unwrap();
+    // create separate JSON strings and combine them manually
+    let json_payload = serde_json::to_string(&execution_payload).unwrap();
     let json_versioned_hashes = serde_json::to_string(&blob_versioned_hashes).unwrap();
     let json_parent_beacon_block_root = serde_json::to_string(&parent_beacon_block_root).unwrap();
 
+    // combine the JSON strings into a single request array
+    let json_request = format!(
+        "[{},{},{}]",
+        json_payload, json_versioned_hashes, json_parent_beacon_block_root
+    );
+
     // if raw is set, print the raw payload, without quotes
     if args.raw {
-        // craft the request to pass into `cast rpc --raw`, as stdin
-        let json_request = "[".to_string()
-            + &[
-                json_payload,
-                json_versioned_hashes,
-                json_parent_beacon_block_root,
-            ]
-            .join(",")
-            + "]";
-        println!("{}", json_request);
+        println!("{json_request}");
         return;
     }
 
-    // craft the request to pass into `cast rpc --raw`
-    let json_request = "'[".to_string()
-        + &[
-            json_payload,
-            json_versioned_hashes,
-            json_parent_beacon_block_root,
-        ]
-        .join(",")
-        + "]'";
-
     // construct the cast rpc command
     let mut prefix = "cast rpc".to_string();
-    let suffix = "engine_newPayloadV3 --raw ".to_string() + &json_request;
+    let suffix = format!("engine_newPayloadV3 --raw {json_request}");
 
     if let Some(rpc_url) = args.rpc_url {
         prefix += &format!(" --rpc-url {}", rpc_url);
@@ -167,168 +282,4 @@ fn main() {
 
     // print the payload
     println!("{prefix}");
-}
-
-/// Converts a rpc header into primitive header
-// TODO: upstream into rpc compat
-fn rpc_header_to_primitive_header(header: Header) -> PrimitiveHeader {
-    PrimitiveHeader {
-        parent_hash: header.parent_hash,
-        timestamp: header.timestamp,
-        ommers_hash: header.uncles_hash,
-        beneficiary: header.miner,
-        state_root: header.state_root,
-        receipts_root: header.receipts_root,
-        transactions_root: header.transactions_root,
-        base_fee_per_gas: header.base_fee_per_gas.map(|x| x.try_into().unwrap()),
-        logs_bloom: header.logs_bloom,
-        withdrawals_root: header.withdrawals_root,
-        difficulty: header.difficulty.to(),
-        number: header.number.unwrap(),
-        gas_used: header.gas_used.try_into().unwrap(),
-        gas_limit: header.gas_limit.try_into().unwrap(),
-        mix_hash: header.mix_hash.unwrap(),
-        nonce: header.nonce.unwrap().into(),
-        extra_data: header.extra_data,
-        blob_gas_used: header.blob_gas_used.map(|x| x.try_into().unwrap()),
-        excess_blob_gas: header.excess_blob_gas.map(|x| x.try_into().unwrap()),
-        parent_beacon_block_root: header.parent_beacon_block_root,
-    }
-}
-
-// convert a rpc withdrawal into a primitive withdrawal
-fn rpc_withdrawal_to_primitive_withdrawal(withdrawal: Withdrawal) -> PrimitiveWithdrawal {
-    PrimitiveWithdrawal {
-        index: withdrawal.index,
-        amount: withdrawal.amount,
-        validator_index: withdrawal.validator_index,
-        address: withdrawal.address,
-    }
-}
-
-// convert a rpc transaction to a primitive transaction
-fn rpc_transaction_to_primitive_transaction(transaction: Transaction) -> TransactionSigned {
-    let nonce = transaction.nonce;
-    let to = match transaction.to {
-        Some(addr) => TransactionKind::Call(addr),
-        None => TransactionKind::Create,
-    };
-    let value = transaction.value;
-    let chain_id = transaction.chain_id;
-    let input = transaction.input;
-    let access_list = AccessList(
-        transaction
-            .access_list
-            .unwrap_or_default()
-            .iter()
-            .map(|item| AccessListItem {
-                address: item.address,
-                storage_keys: item.storage_keys.clone(),
-            })
-            .collect(),
-    );
-    let gas_limit = transaction.gas;
-
-    // this is definitely a signed tx
-    let rpc_signature = transaction.signature.unwrap();
-
-    // massive chain ids can be ignored here
-    let v: u64 = rpc_signature.v.to();
-
-    // if y parity is defined use that
-    // TODO: ugh eip155 v math
-    let odd_y_parity = if let Some(Parity(parity)) = rpc_signature.y_parity {
-        parity
-    } else if v >= 35 {
-        // EIP-155: v = {0, 1} + CHAIN_ID * 2 + 35
-        ((v - 35) % 2) != 0
-    } else if v == 0 || v == 1 {
-        v == 1
-    } else {
-        // non-EIP-155 legacy scheme, v = 27 for even y-parity, v = 28 for odd y-parity
-        if v != 27 && v != 28 {
-            panic!("non-eip-155 legacy v value")
-        }
-        v == 28
-    };
-
-    // convert the signature
-    let signature = Signature {
-        r: rpc_signature.r,
-        s: rpc_signature.s,
-        odd_y_parity,
-    };
-
-    // just condition on tx type
-    let tx = if transaction.transaction_type == Some(3) {
-        PrimitiveTransaction::Eip4844(TxEip4844 {
-            chain_id: chain_id.unwrap(),
-            nonce,
-            gas_limit: gas_limit.try_into().unwrap(),
-            max_fee_per_gas: transaction.max_fee_per_gas.unwrap(),
-            max_priority_fee_per_gas: transaction.max_priority_fee_per_gas.unwrap(),
-            to,
-            value,
-            access_list,
-            blob_versioned_hashes: transaction.blob_versioned_hashes.unwrap_or_default(),
-            max_fee_per_blob_gas: transaction.max_fee_per_blob_gas.unwrap(),
-            input,
-        })
-    } else if transaction.transaction_type == Some(2) {
-        PrimitiveTransaction::Eip1559(TxEip1559 {
-            chain_id: chain_id.unwrap(),
-            nonce,
-            gas_limit: gas_limit.try_into().unwrap(),
-            max_fee_per_gas: transaction.max_fee_per_gas.unwrap(),
-            max_priority_fee_per_gas: transaction.max_priority_fee_per_gas.unwrap(),
-            to,
-            value,
-            access_list,
-            input,
-        })
-    } else if transaction.transaction_type == Some(1) {
-        PrimitiveTransaction::Eip2930(TxEip2930 {
-            chain_id: chain_id.unwrap(),
-            nonce,
-            gas_price: transaction.gas_price.unwrap(),
-            gas_limit: gas_limit.try_into().unwrap(),
-            to,
-            value,
-            access_list,
-            input,
-        })
-    } else if transaction.transaction_type == Some(126) {
-        PrimitiveTransaction::Deposit(TxDeposit {
-            source_hash: B256::from_hex(transaction.other.get("sourceHash").unwrap().to_string())
-                .unwrap(),
-            from: transaction.from,
-            to,
-            mint: transaction
-                .other
-                .get("mint")
-                .map(|v| u128::from_str(&v.to_string()).unwrap()),
-            value,
-            gas_limit: gas_limit.try_into().unwrap(),
-            is_system_transaction: transaction
-                .other
-                .get("isSystemTransaction")
-                .unwrap()
-                .as_bool()
-                .unwrap(),
-            input,
-        })
-    } else {
-        // otherwise legacy
-        PrimitiveTransaction::Legacy(TxLegacy {
-            chain_id,
-            nonce,
-            gas_price: transaction.gas_price.unwrap(),
-            gas_limit: gas_limit.try_into().unwrap(),
-            to,
-            value,
-            input,
-        })
-    };
-
-    TransactionSigned::from_transaction_and_signature(tx, signature)
 }
